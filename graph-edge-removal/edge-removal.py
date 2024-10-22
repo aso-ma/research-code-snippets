@@ -77,5 +77,4 @@ def edge_removal_strategy(graph, threshold, edge_weight_approach: Literal["dista
 if __name__ == "__main__":
   g = nx.karate_club_graph()
   g_new = edge_removal_strategy(g, 5, 'similarity')
-  g_new = edge_removal_strategy()
   print(g_new)
