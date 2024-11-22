@@ -7,14 +7,18 @@ from sklearn.linear_model import LogisticRegression
 from tqdm import tqdm
 
 def k_fold_cross_validation(data, target, classifiers, scoring_metrics, k=10):
-    results = {clf.__class__.__name__: {metric: None for metric in scoring_metrics} for clf in classifiers}
+    results = {clf.__class__.__name__: {metric: {} for metric in scoring_metrics} for clf in classifiers}
 
     for clf in tqdm(classifiers):
         cv = ShuffleSplit(n_splits=k)
         scores = cross_validate(clf, data, target, cv=cv, scoring=scoring_metrics)
         for metric in scoring_metrics:
             mean_score = sum(scores['test_' + metric]) / len(scores['test_' + metric])
-            results[clf.__class__.__name__][metric] = round(mean_score, 5)
+            max_score = max(scores['test_' + metric])
+            min_score = min(scores['test_' + metric])
+            results[clf.__class__.__name__][metric]['avg'] = round(mean_score, 5)
+            results[clf.__class__.__name__][metric]['max'] = round(max_score, 5)
+            results[clf.__class__.__name__][metric]['min'] = round(min_score, 5)
 
 
     return results
