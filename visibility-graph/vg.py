@@ -1,4 +1,4 @@
-from typing import List, Callable, Union, Optional
+from typing import Callable, Optional
 import networkx as nx
 import numpy as np
 from math import atan
@@ -51,10 +51,28 @@ def generate_nvg_from(time_series: np.ndarray, weight_func: Optional[Callable] =
         g.add_weighted_edges_from(weighted_edges)
     return g
 
+def generate_hvg_from(time_series: np.ndarray, weight_func: Optional[Callable] = None) -> nx.Graph:
+    """Generates a horizontal visibility graph from a time series
+    """
+    g = nx.Graph()
+    n = len(time_series)
+    edges = [(i, j)
+             for i in range(n)
+             for j in range(i + 1, n)
+             if all(time_series[k] < min(time_series[i], time_series[j]) 
+                    for k in range(i + 1, j))]
+    if weight_func == None:
+        g.add_edges_from(edges)
+    else:
+        weighted_edges = get_weighted_edges(edges, time_series, weight_func)
+        g.add_weighted_edges_from(weighted_edges)
+    return g
+
 #endregion visibility-graphs
 
 if __name__ == '__main__':
     rnd_ts = np.random.uniform(1, 100, 1000)
-    g = generate_nvg_from(rnd_ts, angle)
+    g = generate_hvg_from(rnd_ts, angle)
     print(g)
+
     
