@@ -69,6 +69,8 @@ def generate_hvg_from(time_series: np.ndarray, weight_func: Optional[Callable] =
     return g
 
 def generate_lpvg_from(ts: np.ndarray, penetrable_limit: int = 1, weight_func: Optional[Callable] = None) -> nx.Graph:
+    """Generates a limited penetrable visibility graph from a time series
+    """
     g = nx.Graph()
     n = len(ts)
 
