@@ -68,11 +68,34 @@ def generate_hvg_from(time_series: np.ndarray, weight_func: Optional[Callable] =
         g.add_weighted_edges_from(weighted_edges)
     return g
 
+def generate_lpvg_from(ts: np.ndarray, penetrable_limit: int = 1, weight_func: Optional[Callable] = None) -> nx.Graph:
+    g = nx.Graph()
+    n = len(ts)
+
+    edges = [(i, j)
+             for i in range(n)
+             for j in range(i+1, n)
+             if all(ts[i+l] < ts[j]+(ts[i]-ts[j])*((j-(i+l))/(j-i))
+                    for l in range(1, min(penetrable_limit+1, j-i))) # Ensuring l < j - i
+            ]
+    if weight_func == None:
+        g.add_edges_from(edges)
+    else:
+        weighted_edges = get_weighted_edges(edges, ts, weight_func)
+        g.add_weighted_edges_from(weighted_edges)
+    return g
+
 #endregion visibility-graphs
 
 if __name__ == '__main__':
     rnd_ts = np.random.uniform(1, 100, 1000)
-    g = generate_hvg_from(rnd_ts, angle)
-    print(g)
+    nvg = generate_nvg_from(time_series=rnd_ts)
+    hvg = generate_hvg_from(time_series=rnd_ts)
+    lpvg = generate_lpvg_from(ts=rnd_ts, penetrable_limit=5)
+    print('NVG:', nvg)
+    print('HVG:', hvg)
+    print('LPVG:', lpvg)
+
+
 
     
