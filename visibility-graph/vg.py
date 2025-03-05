@@ -35,7 +35,14 @@ def get_weighted_edges(edge_list:list, time_series: np.ndarray, weight_func: cal
     return weighted_edges    
 
 def generate_nvg_from(time_series: np.ndarray, weight_func: Optional[Callable] = None) -> nx.Graph:
-    """Generates a natural visibility graph from a time series
+    """
+    Generates a natural visibility graph from a time series
+
+    Reference:
+        Lacasa, L., Luque, B., Ballesteros, F., Luque, J., & Nuno, J. C. (2008).
+        From time series to complex networks: The visibility graph.
+        Proceedings of the National Academy of Sciences, 105(13), 4972-4975.
+        https://doi.org/10.1073/pnas.0709247105
     """
     g = nx.Graph()
     n = len(time_series)
@@ -52,7 +59,13 @@ def generate_nvg_from(time_series: np.ndarray, weight_func: Optional[Callable] =
     return g
 
 def generate_hvg_from(time_series: np.ndarray, weight_func: Optional[Callable] = None) -> nx.Graph:
-    """Generates a horizontal visibility graph from a time series
+    """
+    Generates a horizontal visibility graph from a time series
+    
+    Reference:
+        B. Luque, L. Lacasa, F. Ballesteros, and J. Luque, "Horizontal visibility graphs: 
+        Exact results for random time series," Phys. Rev. E 80, 046103 (2009).
+        DOI: https://doi.org/10.1103/PhysRevE.80.046103
     """
     g = nx.Graph()
     n = len(time_series)
@@ -69,7 +82,13 @@ def generate_hvg_from(time_series: np.ndarray, weight_func: Optional[Callable] =
     return g
 
 def generate_lpvg_from(ts: np.ndarray, penetrable_limit: int = 1, weight_func: Optional[Callable] = None) -> nx.Graph:
-    """Generates a limited penetrable visibility graph from a time series
+    """
+    Generates a limited penetrable visibility graph from a time series
+
+    Reference:
+        Zhou, T. T., Jin, N. D., Gao, Z. K., & Luo, Y. B. "Limited penetrable visibility graph
+        for establishing complex network from time series," Acta Physica Sinica, 61(3), 030506 (2012).
+        DOI: 10.7498/aps.61.030506
     """
     g = nx.Graph()
     n = len(ts)
