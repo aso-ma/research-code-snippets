@@ -2,38 +2,11 @@ import numpy as np
 import pandas as pd
 from scipy.stats import kstest, anderson
 from io import StringIO
+from typing import Dict, Literal, Tuple, Optional
 
-def gower_score_for(a: pd.Series, b: pd.Series) -> float:
-    if len(a) != len(b):
-        raise ValueError("Series must have the same number of features.")
-    
-    n_features = len(a)
-    similarities = np.zeros(n_features)
-    weights = np.zeros(n_features)
+ColumnType = Literal['continuous', 'nominal', 'ordinal']
 
-    ranges = {}
-    for col in a.index:
-        if isinstance(a[col], (int, float)) and isinstance(b[col], (int, float)):
-            ranges[col] = max(a[col], b[col]) - min(a[col], b[col])
-
-    for col in a.index:
-        if is_continuous(col):
-            r = ranges[col]
-            if r == 0:
-              similarities[a.index.get_loc(col)] = 0.0
-            else:
-              similarities[a.index.get_loc(col)] = 1 - abs(a[col] - b[col]) / r
-            weights[a.index.get_loc(col)] = 1.0 # comparable
-        else: # categorical or binary
-            if a[col] == b[col]:
-                 similarities[a.index.get_loc(col)] = 1.0
-            else:
-                 similarities[a.index.get_loc(col)] = 0.0
-            weights[a.index.get_loc(col)] = 1.0 # comparable
-
-    return np.sum(similarities * weights) / np.sum(weights)
-
-def is_continuous(col: pd.Series, unique_ratio_threshold: float = 0.8) -> bool:
+def is_continuous(col: pd.Series, unique_ratio_threshold: float = 0.7) -> bool:
     if not pd.api.types.is_numeric_dtype(col):
         return False
     
@@ -64,15 +37,76 @@ def is_continuous(col: pd.Series, unique_ratio_threshold: float = 0.8) -> bool:
     
     return False
 
-def gower_similarity_matrix(dataframe: pd.DataFrame, dist: bool = False) -> pd.DataFrame:
+def gower_score_for(a: pd.Series, b: pd.Series, column_types: Dict[str, ColumnType], rank_dict: Dict[str, Tuple[pd.Series, int, int]]) -> float:
+    if len(a) != len(b):
+        raise ValueError("Series must have the same number of features.")
+    
+    n_features = len(a)
+    similarities = np.zeros(n_features)
+    weights = np.zeros(n_features)
+
+    ranges = {}
+    for col in a.index:
+        if isinstance(a[col], np.number) and isinstance(b[col], np.number):
+            ranges[col] = max(a[col], b[col]) - min(a[col], b[col])
+
+    for col in a.index:
+        if column_types[col] == 'continuous':
+            r = ranges[col]
+            similarities[a.index.get_loc(col)] = 0.0 if r == 0 else 1 - abs(a[col] - b[col]) / r
+            weights[a.index.get_loc(col)] = 1.0
+        if column_types[col] == 'nominal': 
+            similarities[a.index.get_loc(col)] = 1.0 if a[col] == b[col] else 0.0
+            weights[a.index.get_loc(col)] = 1.0 
+        if column_types[col] == 'ordinal':
+            if a[col] == b[col]:
+                similarities[a.index.get_loc(col)] = 1.0
+            else:
+                ranks, count_max, count_min, max_rank, min_rank = rank_dict[col]
+                rank_i = ranks.loc[a.name]
+                rank_j = ranks.loc[b.name]
+                count_rank_i = len(ranks[ranks == rank_i])
+                count_rank_j = len(ranks[ranks == rank_j])
+                sim = (
+                    1 - 
+                    (abs(rank_i - rank_j) - ((count_rank_i - 1)/2) - ((count_rank_j-1)/2)) / 
+                    (max_rank - min_rank - ((count_max-1)/2) - ((count_min-1)/2))
+                )
+                similarities[a.index.get_loc(col)] = sim
+            weights[a.index.get_loc(col)] = 1.0 
+
+    return np.sum(similarities * weights) / np.sum(weights)
+
+def gower_similarity_matrix(dataframe: pd.DataFrame, column_types: Optional[Dict[str, ColumnType]] = None, dist: bool = False) -> pd.DataFrame:
+    """
+
+    References:
+    - Podani, J.: Extending Gower's general coefficient of similarity to ordinal characters. - Taxon 48: 331-340. 1999. - ISSN 0040-0262. https://doi.org/10.2307/1224438
+    """
+    
     similarity_df = pd.DataFrame(0.0, index=dataframe.index, columns=dataframe.index)
+
+    if column_types == None:
+        column_types = dict()
+        for col in dataframe.columns:
+            column_types[col] = 'continuous' if is_continuous(col) else 'nominal'
+
+    rank_dict = dict()
+    for col in dataframe.columns:
+        if column_types[col] == 'ordinal':
+            ranks = dataframe[col].rank(method='dense', ascending=True)
+            max_rank = ranks.max()
+            min_rank = ranks.min()
+            max_count = len(ranks[ranks == ranks.max()])
+            min_count = len(ranks[ranks == ranks.min()])
+            rank_dict[col] = (ranks, max_count, min_count, max_rank, min_rank)
 
     for i in range(len(dataframe)):
         index_i = dataframe.index[i] 
         for j in range(i + 1, len(dataframe)):
             row_i = dataframe.iloc[i]
             row_j = dataframe.iloc[j]
-            score = gower_score_for(row_i, row_j)
+            score = gower_score_for(row_i, row_j, column_types, rank_dict)
             similarity_df.at[index_i, dataframe.index[j]] = score
             similarity_df.at[dataframe.index[j], index_i] = score
 
@@ -89,6 +123,13 @@ if __name__ == "__main__":
 
     df = pd.read_csv(StringIO(data), index_col="Subject ID")
     
-    similarity_df = gower_similarity_matrix(df)
+    col_types: dict[str, ColumnType] = {
+        "Age": 'continuous',
+        "Handedness": 'nominal',
+        "Eye Colour": 'nominal',
+        "Knows Python": 'nominal',
+    }
+    similarity_df = gower_similarity_matrix(df, col_types)
     print(similarity_df)
+
 
