@@ -37,7 +37,13 @@ def is_continuous(col: pd.Series, unique_ratio_threshold: float = 0.7) -> bool:
     
     return False
 
-def gower_score_for(a: pd.Series, b: pd.Series, column_types: Dict[str, ColumnType], rank_dict: Dict[str, Tuple[pd.Series, int, int]]) -> float:
+def gower_score_for(
+    a: pd.Series, 
+    b: pd.Series, 
+    column_types: Dict[str, ColumnType], 
+    range_dict: Dict[str, float], 
+    rank_dict: Dict[str, Tuple[pd.Series, int, int]]
+) -> float:
     if len(a) != len(b):
         raise ValueError("Series must have the same number of features.")
     
@@ -45,14 +51,9 @@ def gower_score_for(a: pd.Series, b: pd.Series, column_types: Dict[str, ColumnTy
     similarities = np.zeros(n_features)
     weights = np.zeros(n_features)
 
-    ranges = {}
-    for col in a.index:
-        if isinstance(a[col], np.number) and isinstance(b[col], np.number):
-            ranges[col] = max(a[col], b[col]) - min(a[col], b[col])
-
     for col in a.index:
         if column_types[col] == 'continuous':
-            r = ranges[col]
+            r = range_dict[col]
             similarities[a.index.get_loc(col)] = 0.0 if r == 0 else 1 - abs(a[col] - b[col]) / r
             weights[a.index.get_loc(col)] = 1.0
         if column_types[col] == 'nominal': 
@@ -79,17 +80,28 @@ def gower_score_for(a: pd.Series, b: pd.Series, column_types: Dict[str, ColumnTy
 
 def gower_similarity_matrix(dataframe: pd.DataFrame, column_types: Optional[Dict[str, ColumnType]] = None, dist: bool = False) -> pd.DataFrame:
     """
+    This method computes the Gower's similarity matrix for an input dataframe.    
 
     References:
-    - Podani, J.: Extending Gower's general coefficient of similarity to ordinal characters. - Taxon 48: 331-340. 1999. - ISSN 0040-0262. https://doi.org/10.2307/1224438
+        - Podani, J.: Extending Gower's general coefficient of similarity to ordinal characters. - Taxon 48: 331-340. 1999. - ISSN 0040-0262. https://doi.org/10.2307/1224438
+
+    Acknowledgments:
+        - Parsa Azimi (pazimi730@gmail.com): Reviewed the implementation and provided valuable feedback on the algorithm.
     """
     
-    similarity_df = pd.DataFrame(0.0, index=dataframe.index, columns=dataframe.index)
+    similarity_df = pd.DataFrame(0.0, index=dataframe.index.values, columns=dataframe.index.values)
+    np.fill_diagonal(similarity_df.values, 1)
+
 
     if column_types == None:
         column_types = dict()
         for col in dataframe.columns:
             column_types[col] = 'continuous' if is_continuous(col) else 'nominal'
+        
+    range_dict = dict()
+    for col in dataframe.columns:
+        if col_types[col] == 'continuous':
+            range_dict[col] = dataframe[col].max() - dataframe[col].min()
 
     rank_dict = dict()
     for col in dataframe.columns:
@@ -106,7 +118,7 @@ def gower_similarity_matrix(dataframe: pd.DataFrame, column_types: Optional[Dict
         for j in range(i + 1, len(dataframe)):
             row_i = dataframe.iloc[i]
             row_j = dataframe.iloc[j]
-            score = gower_score_for(row_i, row_j, column_types, rank_dict)
+            score = gower_score_for(row_i, row_j, column_types, range_dict, rank_dict)
             similarity_df.at[index_i, dataframe.index[j]] = score
             similarity_df.at[dataframe.index[j], index_i] = score
 
