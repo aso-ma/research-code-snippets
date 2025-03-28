@@ -100,7 +100,7 @@ def gower_similarity_matrix(dataframe: pd.DataFrame, column_types: Optional[Dict
         
     range_dict = dict()
     for col in dataframe.columns:
-        if col_types[col] == 'continuous':
+        if column_types[col] == 'continuous':
             range_dict[col] = dataframe[col].max() - dataframe[col].min()
 
     rank_dict = dict()
