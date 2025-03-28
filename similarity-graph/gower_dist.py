@@ -3,6 +3,7 @@ import pandas as pd
 from scipy.stats import kstest, anderson
 from io import StringIO
 from typing import Dict, Literal, Tuple, Optional
+from tqdm import tqdm
 
 ColumnType = Literal['continuous', 'nominal', 'ordinal']
 
@@ -113,7 +114,7 @@ def gower_similarity_matrix(dataframe: pd.DataFrame, column_types: Optional[Dict
             min_count = len(ranks[ranks == ranks.min()])
             rank_dict[col] = (ranks, max_count, min_count, max_rank, min_rank)
 
-    for i in range(len(dataframe)):
+    for i in tqdm(range(len(dataframe)), desc="Calculating Similarities"):
         index_i = dataframe.index[i] 
         for j in range(i + 1, len(dataframe)):
             row_i = dataframe.iloc[i]
